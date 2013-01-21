@@ -60,6 +60,7 @@ class SyncPicassa(object):
         album_dict = {}
         for album in albums.entry:
             album_dict[album.title.text] = album
+        copy_failed = []
         for l_album in os.listdir(folder_name):
             debug("Found folder %s" % l_album)
             l_album_path = os.path.join(folder_name, l_album)
@@ -82,6 +83,11 @@ class SyncPicassa(object):
                         file_mime_type = mimetypes.guess_type(file_name)
                         if file_mime_type[0].startswith("image/") or file_mime_type[0].startswith("video/"):
                             if not file_name in photos:
+                                file_stats = os.stat(file_path)
+                                if file_stats.st_size > 99*1024*1024:
+                                    debug("Failed to add %s too big 100Mo max, file size is %s" % (file_name, file_stats.st_size))
+                                    copy_failed.append(file_path)
+                                    continue
                                 debug("Adding file %s to album" % file_name)
                                 album_url = '/data/feed/api/user/%s/albumid/%s' % ("default", album.gphoto_id.text)
                                 photo = self.gd_client.InsertPhotoSimple(album_url,
@@ -89,4 +95,6 @@ class SyncPicassa(object):
                                     'Uploaded using the API', file_path,
                                     content_type=file_mime_type[0])
 
-
+        debug("Files that failed copying")
+        for f in copy_failed:
+            debug(f)
